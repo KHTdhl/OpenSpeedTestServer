@@ -1,86 +1,93 @@
-# OpenSpeedTest Installer for NGINX on GL.iNet Routers
+# OpenSpeedTest 安装脚本（适用于 GL.iNet 路由器上的 NGINX）
 
 ```
    _____ _          _ _   _      _   
-  / ____| |        (_) \\ | |    | |  
- | |  __| |  ______ _|  \\| | ___| |_ 
- | | |_ | | |______| | . \` |/ _ \\ __|
- | |__| | |____    | | |\\  |  __/ |_ 
- \\_____|______|   |_|_| \\_|\\___|\\__|
+  / ____| |        (_) \ | |    | |  
+ | |  __| |  ______ _|  \| | ___| |_
+ | | |_ | | |______| | . ` |/ _ \ __|
+ | |__| | |____    | | |\  |  __/ |_
+ \_____|______|   |_|_| \_|\___|\__|
 
          OpenSpeedTest for GL-iNet
-
 ```
-> 📡 Easily deploy OpenSpeedTest with NGINX on OpenWRT-based routers (GL.iNet, etc.)
+
+> 📡 轻松在 OpenWRT / GL.iNet 路由器上部署 OpenSpeedTest + NGINX
 
 ---
 
-## Features
+## ✨ 功能特点
 
-- 📦 Installs and configures [NGINX](https://nginx.org/) to run [OpenSpeedTest](https://openspeedtest.com/)
-- 🔧 Custom NGINX configuration that avoids conflicts with the GL.iNet web UI
-- 📁 Installs to `/www2`, with automatic detection of available storage space
-- 🔗 Supports symlinking to external drives (e.g. SD cards or USB) if internal space is insufficient
-- ⬆️ Supports persistence after firmware updates
-- 🔁 Creates startup and kill scripts for boot-time operation
-- 🧹 Clean uninstall that removes configs, startup scripts, and any symlinked storage
-- 🩺 Includes diagnostics to verify NGINX is running and reachable
-- ⤵️ Automatic download of the most up-to-date version of the script (beta)
-- 🧑‍💻 Interactive CLI with confirmations and safe prompts
-- 🆓 Licensed under GPLv3
-- 🧪 Tested on GL-BE9300, GL-BE3600, GL-MT3000, and GL-MT1300 (with SD card) routers
+* 📦 安装并配置 [NGINX](https://nginx.org/) 运行 [OpenSpeedTest](https://openspeedtest.com/)
+* 🔧 自定义 NGINX 配置，避免与 GL.iNet 原有 Web 管理界面冲突
+* 📁 安装目录为 `/www2`，自动检测机身存储空间是否足够
+* 🔗 若内部存储不足，可自动创建指向外接存储（SD 卡、U 盘）的软链接
+* ⬆️ 支持固件升级后的持久化
+* 🔁 自动创建开机启动脚本与停止脚本
+* 🧹 完整卸载，可清理配置、启动脚本、软链接等内容
+* 🩺 附带诊断工具检查 NGINX 是否正常运行与端口可达性
+* ⤵️ 支持自动下载脚本最新版本（测试中）
+* 🧑‍💻 交互式命令行菜单，所有操作带确认提示
+* 🆓 GPLv3 开源许可
+* 🧪 已在 GL-BE9300、GL-BE3600、GL-MT3000、GL-MT1300（含 SD 卡）等设备上测试
 
 ---
 
-## 🚀 Installation
+## 🚀 安装步骤
 
-1. SSH into your router:
+1. **通过 SSH 登录路由器：**
 
 ```
 ssh root@192.168.8.1
 ```
 
-2.	Download the script:
+2. **下载脚本：**
 
 ```
 wget -O install_openspeedtest.sh https://raw.githubusercontent.com/phantasm22/OpenSpeedTestServer/main/install_openspeedtest.sh && chmod +x install_openspeedtest.sh
 ```
 
-3. Run the script:
+3. **执行脚本：**
 
 ```
 ./install_openspeedtest.sh
 ```
 
-4.	Follow the interactive menu to install, diagnose, or uninstall.
+4. **按提示选择安装、诊断或卸载。**
+
 ---
-🌐 Access the Speed Test
 
-After installation, open:
+## 🌐 打开测速页面
+
+安装完成后，在浏览器访问：
+
 ```
-http://<router-ip>:8888
+http://<路由器IP>:8888
 ```
 
-Example:
+例如：
 
 ```
 http://192.168.8.1:8888
 ```
+
 ---
 
-🔍 Script Options
+## 🔍 脚本菜单选项
 
-When running the script, choose from:
-1. Install OpenSpeedTest – Installs NGINX, configures it, downloads OpenSpeedTest
-2. Run diagnostics – Checks if NGINX is running and listening on the correct port
-3. Uninstall everything – Removes all config, scripts, and files
-4. Exit – Ends the script
+运行脚本后可选择：
+
+1. **安装 OpenSpeedTest** —— 安装 NGINX、配置环境、下载 SpeedTest 页面
+2. **运行诊断工具** —— 检查 NGINX 是否正常运行、端口是否开放
+3. **卸载所有内容** —— 删除所有配置、启动脚本与文件
+4. **退出脚本**
+
 ---
-🧹 Uninstallation
 
-Re-run the script and choose option 3: Uninstall everything.
+## 🧹 卸载方式
 
-Or manually:
+重新执行脚本，选择 **3. 卸载所有内容**。
+
+或手动执行：
 
 ```
 killall nginx
@@ -89,15 +96,17 @@ rm -f /etc/nginx/nginx_openspeedtest.conf
 rm -f /etc/init.d/nginx_speedtest
 rm -rf /www2/Speed-Test-main
 ```
----
-🧑 Author
-
-phantasm22
-
-Contributions, suggestions, and PRs welcome!
 
 ---
 
-📜 License
+## 👤 作者
 
-This project is licensed under the GNU GPL v3.0 License - see the [LICENSE](https://www.gnu.org/licenses/gpl-3.0.en.html) file for details.
+**phantasm22**
+
+欢迎提出建议与 PR！
+
+---
+
+## 📜 许可证
+
+本项目使用 **GNU GPL v3.0** 协议开源，详情请参阅官方许可文件。
