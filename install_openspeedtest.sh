@@ -1,22 +1,12 @@
 #!/bin/sh
-# OpenSpeedTest Installer for NGINX on GL.iNet Routers
-# Author: phantasm22
-# License: GPL-3.0
-# Version: 2025-11-13
-#
-# This script installs or uninstalls the OpenSpeedTest server using NGINX on OpenWRT-based routers.
-# It supports:
-# - Installing NGINX and OpenSpeedTest
-# - Creating a custom config and startup script
-# - Running diagnostics to check if NGINX is active
-# - Uninstalling everything cleanly
-# - Automatically checks and updates itself
-
-
-
+# OpenSpeedTest 安装器（适用于 GL.iNet 路由器上的 NGINX）
+# 作者: phantasm22
+# 许可证: GPL-3.0
+# 版本: 2025-11-13
+# 本脚本将所有用户提示与输出替换为中文（保留颜色、Emoji）
 
 # -----------------------------
-# Color & Emoji
+# 颜色 & Emoji
 # -----------------------------
 RESET="\033[0m"
 CYAN="\033[36m"
@@ -26,17 +16,17 @@ YELLOW="\033[33m"
 
 SPLASH="
    _____ _          _ _   _      _   
-  / ____| |        (_) \\ | |    | |  
- | |  __| |  ______ _|  \\| | ___| |_ 
- | | |_ | | |______| | . \` |/ _ \\ __|
- | |__| | |____    | | |\\  |  __/ |_ 
-  \\_____|______|   |_|_| \\_|\\___|\\__|
+  / ____| |        (_) \ | |    | |  
+ | |  __| |  ______ _|  \| | ___| |_ 
+ | | |_ | | |______| | . \` |/ _ \ __|
+ | |__| | |____    | | |\  |  __/ |_ 
+  \_____|______|   |_|_| \_|\___|\__|
 
          OpenSpeedTest for GL-iNet
 "
 
 # -----------------------------
-# Global Variables
+# 全局变量
 # -----------------------------
 INSTALL_DIR="/www2"
 CONFIG_PATH="/etc/nginx/nginx_openspeedtest.conf"
@@ -44,29 +34,31 @@ STARTUP_SCRIPT="/etc/init.d/nginx_speedtest"
 REQUIRED_SPACE_MB=64
 PORT=8888
 PID_FILE="/var/run/nginx_OpenSpeedTest.pid"
-BLA_BOX="┤ ┴ ├ ┬"  # spinner frames
+BLA_BOX="┤ ┴ ├ ┬"  # 旋转帧
 opkg_updated=0
 SCRIPT_URL="https://raw.githubusercontent.com/phantasm22/OpenSpeedTestServer/refs/heads/main/install_openspeedtest.sh"
 TMP_NEW_SCRIPT="/tmp/install_openspeedtest_new.sh"
 SCRIPT_PATH="$0"
 [ "${SCRIPT_PATH#*/}" != "$SCRIPT_PATH" ] || SCRIPT_PATH="$(pwd)/$SCRIPT_PATH"
 
-# -----------------------------                                                                                         
-# Cleanup any previous updates                                                                                                      
-# ----------------------------- 
+# -----------------------------
+# 清理上一次更新（如果存在 .new）
+# -----------------------------
 case "$0" in
     *.new)
         ORIGINAL="${0%.new}"
-        printf "🧹 Applying update...\n"
+        printf "🧹 应用更新中...
+"
         mv -f "$0" "$ORIGINAL" && chmod +x "$ORIGINAL"
-        printf "✅ Update applied. Restarting main script...\n"
-        sleep 3
+        printf "✅ 已应用更新。正在重启主脚本...
+"
+        sleep 1
         exec "$ORIGINAL" "$@"
         ;;
 esac
 
 # -----------------------------
-# Utility Functions
+# 工具函数
 # -----------------------------
 spinner() {
     pid=$1
@@ -74,7 +66,8 @@ spinner() {
     task=$2
     while kill -0 "$pid" 2>/dev/null; do
         frame=$(printf "%s" "$BLA_BOX" | cut -d' ' -f$((i % 4 + 1)))
-        printf "\r⏳  %s... %-20s" "$task" "$frame"
+        printf "
+⏳  %s... %-20s" "$task" "$frame"
         if command -v usleep >/dev/null 2>&1; then
             usleep 200000
         else
@@ -82,16 +75,18 @@ spinner() {
         fi
         i=$((i+1))
     done
-    printf "\r✅  %s... Done!%-20s\n" "$task" " "
+    printf "
+✅  %s... 完成!%-20s
+" "$task" " "
 }
 
 press_any_key() {
-    printf "Press any key to continue..."
+    printf "按任意键继续..."
     read -r _ </dev/tty
 }
 
 # -----------------------------
-# Disk Space Check & External Drive
+# 磁盘空间检查与外部驱动器处理
 # -----------------------------
 check_space() {
     SPACE_CHECK_PATH="$INSTALL_DIR"
@@ -99,20 +94,25 @@ check_space() {
 
     AVAILABLE_SPACE_MB=$(df -m "$SPACE_CHECK_PATH" 2>/dev/null | awk 'NR==2 {print $4}')
     if [ -z "$AVAILABLE_SPACE_MB" ] || [ "$AVAILABLE_SPACE_MB" -lt "$REQUIRED_SPACE_MB" ]; then
-        printf "❌ Not enough free space at ${CYAN}%s${RESET}. Required: ${CYAN}%dMB${RESET}, Available: ${CYAN}%sMB${RESET}  \n" "$SPACE_CHECK_PATH" "$REQUIRED_SPACE_MB" "${AVAILABLE_SPACE_MB:-0}"
-        printf "\n🔍 Searching mounted external drives for sufficient space...\n"
+        printf "❌ 在 %s 可用空间不足。需要: %dMB，当前: %sMB
+" "$SPACE_CHECK_PATH" "$REQUIRED_SPACE_MB" "${AVAILABLE_SPACE_MB:-0}"
+        printf "
+🔍 正在搜索已挂载的外部驱动器以寻找足够空间...
+"
 
         for mountpoint in $(awk '$2 ~ /^\/mnt\// {print $2}' /proc/mounts); do
             ext_space=$(df -m "$mountpoint" | awk 'NR==2 {print $4}')
             if [ "$ext_space" -ge "$REQUIRED_SPACE_MB" ]; then
-                printf "💾 Found external drive with enough space: ${CYAN}%s${RESET} (${CYAN}%dMB${RESET} available)\n" "$mountpoint" "$ext_space"
-                printf "Use it for installation by creating a symlink at ${CYAN}%s${RESET}? [y/N]: " "$INSTALL_DIR"
+                printf "💾 找到外部磁盘，空间充足：%s（可用 %dMB）
+" "$mountpoint" "$ext_space"
+                printf "要通过在 %s 创建符号链接来使用此位置安装吗？[y/N]: " "$INSTALL_DIR"
                 read -r use_external
                 if [ "$use_external" = "y" ] || [ "$use_external" = "Y" ]; then
                     INSTALL_DIR="$mountpoint/openspeedtest"
                     mkdir -p "$INSTALL_DIR"
                     ln -sf "$INSTALL_DIR" /www2
-                    printf "✅ Symlink created: /www2 -> ${CYAN}%s${RESET}\n" "$INSTALL_DIR"
+                    printf "✅ 已创建符号链接：/www2 -> %s
+" "$INSTALL_DIR"
                     break
                 fi
             fi
@@ -120,72 +120,90 @@ check_space() {
 
         NEW_SPACE_MB=$(df -m "$INSTALL_DIR" 2>/dev/null | awk 'NR==2 {print $4}')
         if [ -z "$NEW_SPACE_MB" ] || [ "$NEW_SPACE_MB" -lt "$REQUIRED_SPACE_MB" ]; then
-            printf "❌ Still not enough space to install. Aborting.\n"
+            printf "❌ 仍然没有足够的空间来安装。正在中止。
+"
             exit 1
         else
-            printf "✅ Sufficient space found at new location: ${CYAN}%dMB${RESET} available  \n" "$NEW_SPACE_MB"
+            printf "✅ 新位置可用空间充足：%dMB
+" "$NEW_SPACE_MB"
         fi
     else
-        printf "✅ Sufficient space for installation: ${CYAN}%dMB${RESET} available  \n" "$AVAILABLE_SPACE_MB"
+        printf "✅ 安装所需空间充足：%dMB
+" "$AVAILABLE_SPACE_MB"
     fi
 }
 
-# -----------------------------                                                                                         
-# Self-update function                                                                                     
-# -----------------------------       
+# -----------------------------
+# 自身更新检查
+# -----------------------------
 check_self_update() {
-    printf "\n🔍 Checking for script updates...\n"
+    printf "
+🔍 正在检查脚本更新...
+"
 
-    LOCAL_VERSION="$(grep -m1 '^# Version:' "$SCRIPT_PATH" | awk '{print $3}' | tr -d '\r')"
+    LOCAL_VERSION="$(grep -m1 '^# Version:' "$SCRIPT_PATH" | awk '{print $3}' | tr -d '
+')"
     [ -z "$LOCAL_VERSION" ] && LOCAL_VERSION="0000-00-00"
 
     if ! wget -q -O "$TMP_NEW_SCRIPT" "$SCRIPT_URL"; then
-        printf "⚠️  Unable to check for updates (network or GitHub issue).\n"
+        printf "⚠️ 无法检查更新（网络或 GitHub 问题）。
+"
         return 1
     fi
 
-    REMOTE_VERSION="$(grep -m1 '^# Version:' "$TMP_NEW_SCRIPT" | awk '{print $3}' | tr -d '\r')"
+    REMOTE_VERSION="$(grep -m1 '^# Version:' "$TMP_NEW_SCRIPT" | awk '{print $3}' | tr -d '
+')"
     [ -z "$REMOTE_VERSION" ] && REMOTE_VERSION="0000-00-00"
 
-    printf "📦 Current version: %s\n" "$LOCAL_VERSION"
-    printf "🌐 Latest version:  %s\n" "$REMOTE_VERSION"
+    printf "📦 当前版本: %s
+" "$LOCAL_VERSION"
+    printf "🌐 最新版本:  %s
+" "$REMOTE_VERSION"
 
+    # 比较版本（字符串比较足够用于 YYYY-MM-DD 形式）
     if [ "$REMOTE_VERSION" \> "$LOCAL_VERSION" ]; then
-        printf "\nA new version is available. Update now? [y/N]: "
+        printf "
+检测到新版本。现在更新吗？[y/N]: "
         read -r ans
         case "$ans" in
             y|Y)
-                printf "⬆️  Updating...\n"
+                printf "⬆️ 正在更新...
+"
                 cp "$TMP_NEW_SCRIPT" "$SCRIPT_PATH.new" && chmod +x "$SCRIPT_PATH.new"
-		printf "✅ Upgrade complete. Restarting script...\n"
-		exec "$SCRIPT_PATH.new" "$@"
+                printf "✅ 已完成升级。正在重启脚本...
+"
+                exec "$SCRIPT_PATH.new" "$@"
                 ;;
             *)
-                printf "⏭️  Skipping update. Continuing with current version.\n"
+                printf "⏭️ 跳过更新，继续使用当前版本。
+"
                 ;;
         esac
     else
-        printf "✅ You are already running the latest version.\n"
+        printf "✅ 你已经运行的是最新版本。
+"
     fi
 
     rm -f "$TMP_NEW_SCRIPT" >/dev/null 2>&1
-    printf "\n"
+    printf "
+"
 }
 
 # -----------------------------
-# Persist Prompt
+# 持久化选项提示（保持在 sysupgrade 时保留）
 # -----------------------------
 prompt_persist() {
     if [ -n "$AVAILABLE_SPACE_MB" ] && [ "$AVAILABLE_SPACE_MB" -ge "$REQUIRED_SPACE_MB" ] && [ ! -L "$INSTALL_DIR" ]; then
-        printf "\n💾 Do you want OpenSpeedTest to persist through firmware updates? [y/N]: "
+        printf "
+💾 是否希望 OpenSpeedTest 在固件升级后保留？[y/N]: "
         read -r persist
         if [ "$persist" = "y" ] || [ "$persist" = "Y" ]; then
-            # Core paths
+            # 核心路径
             grep -Fxq "$INSTALL_DIR" /etc/sysupgrade.conf 2>/dev/null || echo "$INSTALL_DIR" >> /etc/sysupgrade.conf
             grep -Fxq "$STARTUP_SCRIPT" /etc/sysupgrade.conf 2>/dev/null || echo "$STARTUP_SCRIPT" >> /etc/sysupgrade.conf
             grep -Fxq "$CONFIG_PATH" /etc/sysupgrade.conf 2>/dev/null || echo "$CONFIG_PATH" >> /etc/sysupgrade.conf
 
-            # Also persist any rc.d symlinks for startup/shutdown (S* and K*)
+            # 也持久化任何 rc.d 的符号链接（S* 和 K*）
             if [ -n "$STARTUP_SCRIPT" ]; then
                 SERVICE_NAME=$(basename "$STARTUP_SCRIPT")
                 for LINK in $(find /etc/rc.d/ -type l -name "[SK]*${SERVICE_NAME}" 2>/dev/null); do
@@ -193,76 +211,87 @@ prompt_persist() {
                 done
             fi
 
-            printf "✅ Persistence enabled.\n"
+            printf "✅ 已启用持久化。
+"
             return
         fi
     fi
     remove_persistence
-    printf "✅ Persistence disabled.\n"
+    printf "✅ 已禁用持久化。
+"
 }
 
 # -----------------------------
-# Remove Persistence
+# 移除持久化记录
 # -----------------------------
 remove_persistence() {
-    sed -i "\|$INSTALL_DIR|d" /etc/sysupgrade.conf 2>/dev/null
-    sed -i "\|$STARTUP_SCRIPT|d" /etc/sysupgrade.conf 2>/dev/null
-    sed -i "\|$CONFIG_PATH|d" /etc/sysupgrade.conf 2>/dev/null
+    sed -i "|$INSTALL_DIR|d" /etc/sysupgrade.conf 2>/dev/null
+    sed -i "|$STARTUP_SCRIPT|d" /etc/sysupgrade.conf 2>/dev/null
+    sed -i "|$CONFIG_PATH|d" /etc/sysupgrade.conf 2>/dev/null
 
     if [ -n "$STARTUP_SCRIPT" ]; then
         SERVICE_NAME=$(basename "$STARTUP_SCRIPT")
-        sed -i "\|/etc/rc.d/[SK].*${SERVICE_NAME}|d" /etc/sysupgrade.conf 2>/dev/null
+        sed -i "|/etc/rc.d/[SK].*${SERVICE_NAME}|d" /etc/sysupgrade.conf 2>/dev/null
     fi
 }
 
 # -----------------------------
-# Download Source
+# 选择下载源
 # -----------------------------
 choose_download_source() {
-    printf "\n🌐 Choose download source:\n"
-    printf "1️⃣  Official repository\n"
-    printf "2️⃣  GL.iNet mirror\n"
-    printf "Choose [1-2]: "
+    printf "
+🌐 请选择下载源：
+"
+    printf "1️⃣ 官方仓库
+"
+    printf "2️⃣ GL.iNet 镜像
+"
+    printf "请选择 [1-2]: "
     read -r src
-    printf "\n"
+    printf "
+"
     case $src in
         1) DOWNLOAD_URL="https://github.com/openspeedtest/Speed-Test/archive/refs/heads/main.zip" ;;
         2) DOWNLOAD_URL="https://fw.gl-inet.com/tools/script/Speed-Test-main.zip" ;;
-        *) printf "❌ Invalid option. Defaulting to official repository.\n"; DOWNLOAD_URL="https://github.com/openspeedtest/Speed-Test/archive/refs/heads/main.zip" ;;
+        *) printf "❌ 无效选项，已默认选择官方仓库。
+"; DOWNLOAD_URL="https://github.com/openspeedtest/Speed-Test/archive/refs/heads/main.zip" ;;
     esac
 }
 
 # -----------------------------
-# Detect Internal IP
+# 检测内部 IP
 # -----------------------------
 detect_internal_ip() {
-    INTERNAL_IP="$(uci get network.lan.ipaddr 2>/dev/null | tr -d '\r\n')"
-    [ -z "$INTERNAL_IP" ] && INTERNAL_IP="<router_ip>"
+    INTERNAL_IP="$(uci get network.lan.ipaddr 2>/dev/null | tr -d '
+')"
+    [ -z "$INTERNAL_IP" ] && INTERNAL_IP="<路由器_IP>"
 }
 
 # -----------------------------
-# Install Dependencies
+# 安装依赖
 # -----------------------------
 install_dependencies() {
     DEPENDENCIES="curl:curl nginx:nginx-ssl timeout:coreutils-timeout unzip:unzip wget:wget"
 
     for item in $DEPENDENCIES; do
-        CMD=${item%%:*}   # command name
-        PKG=${item##*:}   # package name
+        CMD=${item%%:*}   # 命令名
+        PKG=${item##*:}   # 包名
 
-        # Uppercase using BusyBox-compatible tr
+        # 使用 BusyBox 兼容的 tr 转为大写以便展示
         CMD_UP=$(printf "%s" "$CMD" | tr 'a-z' 'A-Z')
         PKG_UP=$(printf "%s" "$PKG" | tr 'a-z' 'A-Z')
 
         if ! command -v "$CMD" >/dev/null 2>&1; then
-            printf "${CYAN}📦 %s${RESET} not found. Installing ${CYAN}%s${RESET}...\n" "$CMD_UP" "$PKG_UP"
+            printf "${CYAN}📦 %s${RESET} 未安装，正在安装 %s...
+" "$CMD_UP" "$PKG_UP"
             if [ "$opkg_updated" -eq 0 ]; then
                 opkg update >/dev/null 2>&1
                 opkg_updated=1
             fi
 
             if opkg install "$PKG" >/dev/null 2>&1; then
-                printf "${CYAN}✅ %s${RESET} installed successfully.\n" "$PKG_UP"
+                printf "${CYAN}✅ %s${RESET} 安装成功。
+" "$PKG_UP"
                 if [ "$PKG" = "nginx-ssl" ]; then
                     /etc/init.d/nginx stop >/dev/null 2>&1
                     /etc/init.d/nginx disable >/dev/null 2>&1
@@ -271,29 +300,34 @@ install_dependencies() {
                     fi
                 fi
             else
-                printf "${RED}❌ Failed to install %s. Check your internet or opkg configuration.${RESET}\n" "$PKG_UP"
+                printf "${RED}❌ 无法安装 %s。请检查网络或 opkg 配置。${RESET}
+" "$PKG_UP"
                 exit 1
             fi
         else
-            printf "${CYAN}✅ %s${RESET} already installed.\n" "$CMD_UP"
+            printf "${CYAN}✅ %s${RESET} 已安装。
+" "$CMD_UP"
         fi
     done
 }
 
 # -----------------------------
-# Install OpenSpeedTest
+# 安装 OpenSpeedTest
 # -----------------------------
 install_openspeedtest() {
     install_dependencies
     check_space
     choose_download_source
 
-    # Stop running OpenSpeedTest if PID exists
+    # 如果有旧的 PID 文件则尝试停止
     if [ -s "$PID_FILE" ]; then
         OLD_PID=$(cat "$PID_FILE")
         if kill -0 "$OLD_PID" 2>/dev/null; then
-            printf "⚠️  Existing OpenSpeedTest detected. Stopping...\n"
-            kill "$OLD_PID" && printf "✅ Stopped.\n" || printf "❌ Failed to stop.\n"
+            printf "⚠️ 检测到已有运行中的 OpenSpeedTest，正在停止...
+"
+            kill "$OLD_PID" && printf "✅ 已停止。
+" || printf "❌ 停止失败。
+"
             rm -f "$PID_FILE"
         fi
     fi
@@ -302,20 +336,20 @@ install_openspeedtest() {
     cd "$INSTALL_DIR" || exit 1
     [ -d Speed-Test-main ] && rm -rf Speed-Test-main
 
-    # Download with spinner
+    # 使用后台 wget 下载并显示 spinner
     wget -O main.zip "$DOWNLOAD_URL" >/dev/null 2>&1 &
     wget_pid=$!
-    spinner "$wget_pid" "Downloading OpenSpeedTest"
+    spinner "$wget_pid" "下载 OpenSpeedTest"
     wait "$wget_pid"
 
-    # Unzip with spinner
-    unzip -o main.zip >/dev/null &
+    # 解压并显示 spinner
+    unzip -o main.zip >/dev/null 2>&1 &
     unzip_pid=$!
-    spinner "$unzip_pid" "Unzipping"
+    spinner "$unzip_pid" "解压文件"
     wait "$unzip_pid"
-    rm main.zip
+    rm -f main.zip
 
-    # Create NGINX config
+    # 生成 NGINX 配置
     cat <<EOF > "$CONFIG_PATH"
 worker_processes  auto;
 worker_rlimit_nofile 100000;
@@ -361,7 +395,7 @@ http {
             }
         }
 
-        location ~* ^.+\\.(?:css|cur|js|jpe?g|gif|htc|ico|png|html|xml|otf|ttf|eot|woff|woff2|svg)\$ {
+        location ~* ^.+\.(?:css|cur|js|jpe?g|gif|htc|ico|png|html|xml|otf|ttf|eot|woff|woff2|svg)\$ {
             access_log off;
             expires 365d;
             add_header Cache-Control public;
@@ -371,19 +405,21 @@ http {
 }
 EOF
 
-    # Create startup script
+    # 生成启动脚本
     cat <<EOF > "$STARTUP_SCRIPT"
 #!/bin/sh /etc/rc.common
 START=81
 STOP=15
 start() {
     if netstat -tuln | grep -q ":$PORT"; then
-        printf "⚠️  Port $PORT already in use. Cannot start OpenSpeedTest NGINX.\n"
+        printf "⚠️  端口 $PORT 已被占用，无法启动 OpenSpeedTest 的 NGINX。
+"
         return 1
     fi
-    printf "Starting OpenSpeedTest NGINX Server..."
+    printf "正在启动 OpenSpeedTest NGINX 服务..."
     /usr/sbin/nginx -c $CONFIG_PATH
-    printf " ✅\n"
+    printf " ✅
+"
 }
 stop() {
     if [ -s $PID_FILE ]; then
@@ -393,54 +429,64 @@ stop() {
 }
 EOF
     chmod +x "$STARTUP_SCRIPT"
-    "$STARTUP_SCRIPT" enable
+    "$STARTUP_SCRIPT" enable 2>/dev/null || true
 
-    # Start NGINX
+    # 启动 NGINX
     "$STARTUP_SCRIPT" start
 
-    # Detect internal IP
+    # 检测内部 IP 并提示
     detect_internal_ip
-    printf "\n✅ Installation complete. Open ${CYAN}http://%s:%d  \n${RESET}" "$INTERNAL_IP" "$PORT"
+    printf "
+✅ 安装完成。请访问： ${CYAN}http://%s:%d${RESET}
+" "$INTERNAL_IP" "$PORT"
     prompt_persist
     press_any_key
 }
 
 # -----------------------------
-# Diagnostics
+# 诊断工具
 # -----------------------------
 diagnose_nginx() {
-    printf "\n🔍 Running OpenSpeedTest diagnostics...\n\n"
+    printf "
+🔍 正在运行 OpenSpeedTest 诊断...
 
-    # Detect internal IP
+"
+
     detect_internal_ip
-    
-    # Check if NGINX process is running
+
     if [ -s "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-        printf "✅ OpenSpeedTest NGINX process is running (PID: %s)\n" "$(cat "$PID_FILE")"
+        printf "✅ OpenSpeedTest 的 NGINX 进程正在运行（PID: %s）
+" "$(cat "$PID_FILE")"
     else
-        printf "❌ OpenSpeedTest NGINX process is NOT running\n"
+        printf "❌ OpenSpeedTest 的 NGINX 进程 未在运行
+"
     fi
 
-    # Check if port is listening
     if netstat -tuln | grep ":$PORT " >/dev/null; then
-        printf "✅ Port %d is open and listening on %s\n" "$PORT" "$INTERNAL_IP"
-        printf "🌐 You can access OpenSpeedTest at: ${CYAN}http://%s:%d\n${RESET}" "$INTERNAL_IP" "$PORT"
+        printf "✅ 端口 %d 已在 %s 上监听
+" "$PORT" "$INTERNAL_IP"
+        printf "🌐 你可以通过以下地址访问 OpenSpeedTest： ${CYAN}http://%s:%d${RESET}
+" "$INTERNAL_IP" "$PORT"
     else
-        printf "❌ Port %d is not listening on %s\n" "$PORT" "$INTERNAL_IP"
+        printf "❌ 端口 %d 在 %s 上未监听
+" "$PORT" "$INTERNAL_IP"
     fi
 
     press_any_key
 }
 
 # -----------------------------
-# Uninstall OpenSpeedTest
+# 卸载所有内容
 # -----------------------------
 uninstall_all() {
-    printf "\n🧹 This will remove OpenSpeedTest, the startup script, and /www2 contents.\n"
-    printf "Are you sure? [y/N]: "
+    printf "
+🧹 这将移除 OpenSpeedTest、启动脚本及 /www2 内容。
+"
+    printf "确定要继续吗？[y/N]: "
     read -r confirm
     if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
-        printf "❌ Uninstall cancelled.\n"
+        printf "❌ 卸载已取消。
+"
         press_any_key
         return
     fi
@@ -459,49 +505,61 @@ uninstall_all() {
     [ -f "$CONFIG_PATH" ] && rm -f "$CONFIG_PATH"
 
     if [ -f "$STARTUP_SCRIPT" ]; then
-        "$STARTUP_SCRIPT" disable 2>/dev/null
+        "$STARTUP_SCRIPT" disable 2>/dev/null || true
         rm -f "$STARTUP_SCRIPT"
     fi
 
     remove_persistence
-    printf "✅ OpenSpeedTest uninstall complete.\n"
+    printf "✅ OpenSpeedTest 已成功卸载。
+"
     press_any_key
 }
 
-# -----------------------------                                                                                         
-# Check for updates                                                                                                             
-# -----------------------------  
-command -v clear >/dev/null 2>&1 && clear                                                                                                               
-printf "%b\n" "$SPLASH"
-check_self_update "$@"  
+# -----------------------------
+# 启动界面与检查更新
+# -----------------------------
+command -v clear >/dev/null 2>&1 && clear
+printf "%b
+" "$SPLASH"
+check_self_update "$@"
 
 # -----------------------------
-# Main Menu
+# 主菜单
 # -----------------------------
 show_menu() {
     clear
-    printf "%b\n" "$SPLASH"
-    printf "%b\n" "${CYAN}Please select an option:${RESET}\n"
-    printf "1️⃣  Install OpenSpeedTest\n"
-    printf "2️⃣  Run diagnostics\n"
-    printf "3️⃣  Uninstall everything\n"
-    printf "4️⃣  Check for update\n"
-    printf "5️⃣  Exit\n"
-    printf "Choose [1-5]: "
+    printf "%b
+" "$SPLASH"
+    printf "%b
+" "${CYAN}请选择一个操作：${RESET}
+"
+    printf "1️⃣  安装 OpenSpeedTest
+"
+    printf "2️⃣  运行诊断
+"
+    printf "3️⃣  卸载所有内容
+"
+    printf "4️⃣  检查更新
+"
+    printf "5️⃣  退出
+"
+    printf "请选择 [1-5]: "
     read opt
-    printf "\n"
+    printf "
+"
     case $opt in
         1) install_openspeedtest ;;
         2) diagnose_nginx ;;
         3) uninstall_all ;;
         4) check_self_update "$@" && press_any_key;;
-	5) exit 0 ;;
-        *) printf "%b\n" "${RED}❌ Invalid option.  ${RESET}"; sleep 1; show_menu ;;
+        5) exit 0 ;;
+        *) printf "%b
+" "${RED}❌ 无效选项。${RESET}"; sleep 1; show_menu ;;
     esac
     show_menu
 }
 
 # -----------------------------
-# Start
+# 启动
 # -----------------------------
 show_menu
